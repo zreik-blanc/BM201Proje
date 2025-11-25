@@ -1,0 +1,24 @@
+services:
+  llm-server:
+    build: ./server
+
+    container_name: llm-websocket-server 
+    
+    expose:
+      - "8000"
+    volumes:
+      - ./server:/app
+    env_file:
+      - ./server/.env
+    # remove --reload for production
+    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    volumes:
+      - ./server/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80" # The only public entry point
+    depends_on:
+      - llm-server
