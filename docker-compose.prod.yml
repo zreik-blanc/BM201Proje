@@ -1,0 +1,31 @@
+# testing docker-compose.prod.yml if it works correctly with secrets and no volume mounts
+services:
+  llm-server:
+    build: ./server
+    container_name: websocket-server-prod
+    restart: unless-stopped
+    expose:
+      - "8000"
+    # No volume mount: use the code baked into the image
+    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ]
+    environment:
+      - LLM_SECRET_KEY=${LLM_SECRET_KEY}
+      - UNITY_CLIENT_KEY=${UNITY_CLIENT_KEY}
+    secrets:
+      - llm_secret
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy_prod
+    restart: unless-stopped
+    volumes:
+      - ./server/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - llm-server
+
+secrets:
+  llm_secret:
+    external: true
+    name: prod/bm201/keys
