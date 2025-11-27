@@ -1,9 +1,19 @@
 import json
+import logging
 import os
 import sys
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, status
 from typing import Dict
+
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     docs_url = None,
@@ -16,8 +26,8 @@ LLM_SECRET_KEY = os.environ.get("LLM_SECRET_KEY")
 UNITY_CLIENT_KEY = os.environ.get("UNITY_CLIENT_KEY")
 
 if not LLM_SECRET_KEY or not UNITY_CLIENT_KEY:
-    print("CRITICAL ERROR: Security keys are missing from environment variables.")
-    print("Please set LLM_SECRET_KEY and UNITY_CLIENT_KEY.")
+    logger.critical("Security keys are missing from environment variables.")
+    logger.critical("Please set LLM_SECRET_KEY and UNITY_CLIENT_KEY.")
     sys.exit(1)
 
 class ConnectionManager:
@@ -40,7 +50,7 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def root():
-    return {"message": "LLM Websocket is running!", "version": "1.0.0"}
+    return {"message": "LLM Websocket is running!", "version": "1.0.1"}
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(
@@ -59,11 +69,17 @@ async def websocket_endpoint(
             is_authorized = True
 
     if not is_authorized:
-        print(f"Unauthorized connection attempt: {client_id} with token: {x_auth_token}")
+        logger.warning(f"Unauthorized connection attempt: {client_id}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
+    else:
+        if client_id in manager.active_connections:
+            logger.warning(f"Client ID '{client_id}' is already connected. Closing new connection.")
+            await websocket.close(code=status.WS_1000_NORMAL_CLOSURE)
+            return
 
     await manager.connect(websocket, client_id)
+    logger.info(f"Client connected: {client_id}")
 
     try:
         while True:
@@ -77,9 +93,10 @@ async def websocket_endpoint(
                     
                     if target and command:
                         if manager.active_connections.get(target):
-                            print(f"{CONTROLLER_ID} sent command to {target}: {command}")
+                            logger.debug(f"LLM -> {target}: {command}")
                             await manager.send_message(command, target)
                         else:
+                            logger.warning(f"Target '{target}' not connected")
                             await manager.send_message(f"Target '{target}' is not connected. Cannot send command.", CONTROLLER_ID)
                     else:
                         await manager.send_message("Invalid JSON format. Expected {'target': '...', 'message': '...'}", CONTROLLER_ID)
@@ -89,12 +106,12 @@ async def websocket_endpoint(
             # Logic: If a device/client sends data, forward it to the LLM
             else:
                 if manager.active_connections.get(CONTROLLER_ID):
-                    print(f"{client_id} sent message: {data}")
+                    logger.debug(f"{client_id} -> LLM: {data}")
                     response = json.dumps({"sender": client_id, "message": data})
                     await manager.send_message(response, CONTROLLER_ID)
                 else:
-                    print(f"{CONTROLLER_ID} not connected, dropping message from {client_id}: {data}")
+                    logger.warning(f"LLM not connected, dropping message from {client_id}")
                 
     except WebSocketDisconnect:
         manager.disconnect(client_id)
-        print(f"Client #{client_id} disconnected")
+        logger.info(f"Client disconnected: {client_id}")

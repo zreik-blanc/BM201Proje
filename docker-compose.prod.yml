@@ -11,6 +11,7 @@ services:
     environment:
       - LLM_SECRET_KEY=${LLM_SECRET_KEY}
       - UNITY_CLIENT_KEY=${UNITY_CLIENT_KEY}
+      - LOG_LEVEL=INFO
     secrets:
       - llm_secret
 
