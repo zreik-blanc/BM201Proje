@@ -9,8 +9,8 @@ services:
       - ./server:/app
     env_file:
       - ./server/.env
-    # remove --reload for production
-    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ]
+    # dont forget to remove --reload in demo showcase
+    command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
 
   nginx:
     image: nginx:latest
@@ -19,6 +19,6 @@ services:
     volumes:
       - ./server/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "80:80" # The only public entry point
+      - "80:80"
     depends_on:
       - llm-server
