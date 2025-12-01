@@ -37,6 +37,4 @@ services:
     image: redis:alpine3.22
     container_name: redis_broker
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     command: redis-server --save "" --loglevel warning
