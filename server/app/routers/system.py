@@ -6,7 +6,7 @@ router = APIRouter()
 
 @router.get("/")
 async def root():
-    return {"message": "LLM Websocket is running!", "version": "1.0.2"}
+    return {"message": "LLM Websocket is running!", "version": "1.0.3"}
 
 
 @router.get("/metrics")
