@@ -26,7 +26,7 @@ class ConnectionManager:
             REDIS_URL, encoding="utf-8", decode_responses=True
         )
 
-    async def connect(self, websocket: WebSocket, client_id: str):
+    async def connect(self, websocket: WebSocket, client_id: str) -> None:
         # Accept the WebSocket connection
         await websocket.accept()
         self.active_connections[client_id] = websocket
@@ -41,7 +41,7 @@ class ConnectionManager:
         # Start listening to Redis messages for this client
         asyncio.create_task(self.listen_to_redis(client_id))
 
-    async def _cleanup_pubsub(self, client_id: str):
+    async def _cleanup_pubsub(self, client_id: str) -> None:
         # When disconnecting, unsubscribe and close the PubSub connection
         if client_id in self.pubsub_connections:
             pubsub = self.pubsub_connections[client_id]
@@ -53,16 +53,16 @@ class ConnectionManager:
             finally:
                 del self.pubsub_connections[client_id]
 
-    def disconnect(self, client_id: str):
+    def disconnect(self, client_id: str) -> None:
         if client_id in self.active_connections:
             del self.active_connections[client_id]
             asyncio.create_task(self._cleanup_pubsub(client_id))
 
-    async def send_message(self, message: str, target_client_id: str):
+    async def send_message(self, message: str, target_client_id: str) -> None:
         # Publishes a message to the specified client's Redis channel
         await self.redis_client.publish(target_client_id, message)
 
-    async def listen_to_redis(self, client_id: str):
+    async def listen_to_redis(self, client_id: str) -> None:
         # Starts listening to Redis messages for a specific client
         try:
             pubsub = self.pubsub_connections.get(client_id)
