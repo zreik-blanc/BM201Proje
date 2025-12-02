@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-from ..connection_manager import manager
 
 router = APIRouter()
 
