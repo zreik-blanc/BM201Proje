@@ -43,8 +43,6 @@ fi
 echo "Cloning Git repository..."
 
 git clone https://github.com/zreik-blanc/BM201Proje.git /home/ubuntu/BM201Project
-chown -R ubuntu:ubuntu /home/ubuntu/BM201Project
-cd /home/ubuntu/BM201Project
 
 # Right now we are not running the Docker Compose setup automatically to allow for manual configuration first.
 # # Run Docker Compose to set up the application

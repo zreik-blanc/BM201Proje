@@ -78,12 +78,12 @@ WebSocket-Bridge/
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-- Python 3.12+ (for local development)
+- Python 3.11+ (for local development)
 
 ### 1. Clone the Repository
 
 ```bash
-git https://github.com/zreik-blanc/WebSocket-Bridge.git
+git clone https://github.com/zreik-blanc/WebSocket-Bridge.git
 ```
 
 ### 2. Configure Environment Variables

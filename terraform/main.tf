@@ -2,21 +2,6 @@ provider "aws" {
   region = "eu-central-1"
 }
 
-data "aws_ami" "ubuntu" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
-  }
-
-  owners = ["099720109477"]
-}
-
-data "http" "myip" {
-  url = "https://checkip.amazonaws.com/"
-}
-
 module "WebSocket_VPC" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.19.0"
@@ -50,7 +35,7 @@ module "WebSocket_SG" {
       from_port   = 22
       to_port     = 22
       protocol    = "tcp"
-      cidr_blocks = "${chomp(data.http.myip.response_body)}/32"
+      cidr_blocks = local.my_current_ip
       description = "SSH from my IP"
     },
     {
@@ -81,7 +66,7 @@ module "WebSocket_SG" {
 }
 
 resource "aws_instance" "app_server" {
-  ami           = data.aws_ami.ubuntu.id
+  ami           = data.aws_ami.ubuntu
   instance_type = var.instance_type
   key_name      = var.key_name
 
