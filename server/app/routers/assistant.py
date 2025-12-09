@@ -4,6 +4,7 @@ from server.app.helpers import transcribe_audio_file
 
 router = APIRouter()
 
+
 @router.post("/voice-message")
 async def transcribe_voice(file: UploadFile = File(...)):
     try:

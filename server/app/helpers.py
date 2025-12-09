@@ -26,30 +26,39 @@ async def transcribe_audio_file(file: UploadFile) -> str:
             file_extension = ".webm"
 
         # Copies all audio content into a temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=file_extension
+        ) as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_audio_path = temp_file.name
 
-        print(f"Voice command received ({file_extension}), temporary file: {temp_audio_path}")
+        print(
+            f"Voice command received ({file_extension}), temporary file: {temp_audio_path}"
+        )
 
         # Transcribing using out faster-whisper model
         user_text = ""
         async with app_context.MODEL_LOCK:
             print("Transcribing with Faster-Whisper...")
             # Whisper kütüphanesi dosya uzantısına bakarak formatı otomatik tanır
-            segments, info = app_context.WHISPER_MODEL.transcribe(temp_audio_path, beam_size=5)
+            segments, info = app_context.WHISPER_MODEL.transcribe(
+                temp_audio_path, beam_size=5
+            )
             segment_texts = [segment.text for segment in segments]
             user_text = "".join(segment_texts).strip()
 
         if not user_text or len(user_text.strip()) < 2:
-            raise HTTPException(400, f"No speech detected in audio or text is too short: '{user_text}'")
+            raise HTTPException(
+                400, f"No speech detected in audio or text is too short: '{user_text}'"
+            )
 
         return user_text
 
     except Exception as e:
         print(f"Transcription error: {e}")
         import traceback
+
         traceback.print_exc()
         if isinstance(e, HTTPException):
             raise e
