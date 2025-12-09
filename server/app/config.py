@@ -4,6 +4,7 @@ import logging
 import re
 
 from dotenv import load_dotenv
+from sympy.printing.pytorch import torch
 
 load_dotenv()
 
@@ -23,6 +24,9 @@ LLM_SECRET_TOKEN = os.environ.get("LLM_SECRET_TOKEN")
 UNITY_CLIENT_TOKEN = os.environ.get("UNITY_CLIENT_TOKEN")
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD")
 REDIS_URL = f"redis://:{REDIS_PASSWORD}@redis:6379/0"
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+WHISPER_MODEL_SIZE = "large-v3"
 
 
 # --- Startup Check ---
