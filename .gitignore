@@ -209,6 +209,8 @@ __marimo__/
 # Local development idea files
 features.md
 
+.vs/
+
 # macOS system files
 .DS_Store
 
