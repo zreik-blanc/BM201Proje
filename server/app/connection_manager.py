@@ -1,7 +1,7 @@
+from typing import Dict
 import asyncio
 import redis.asyncio as redis
 
-from typing import Dict
 from redis.asyncio.client import PubSub
 from fastapi import WebSocket
 from .config import REDIS_URL, logger
@@ -26,7 +26,7 @@ class ConnectionManager:
             REDIS_URL, encoding="utf-8", decode_responses=True
         )
 
-    async def connect(self, websocket: WebSocket, client_id: str):
+    async def connect(self, websocket: WebSocket, client_id: str) -> None:
         # Accept the WebSocket connection
         await websocket.accept()
         self.active_connections[client_id] = websocket
@@ -41,7 +41,7 @@ class ConnectionManager:
         # Start listening to Redis messages for this client
         asyncio.create_task(self.listen_to_redis(client_id))
 
-    async def _cleanup_pubsub(self, client_id: str):
+    async def _cleanup_pubsub(self, client_id: str) -> None:
         # When disconnecting, unsubscribe and close the PubSub connection
         if client_id in self.pubsub_connections:
             pubsub = self.pubsub_connections[client_id]
@@ -49,25 +49,25 @@ class ConnectionManager:
                 await pubsub.unsubscribe(client_id)
                 await pubsub.close()
             except Exception as e:
-                logger.error(f"Error cleaning up pubsub for {client_id}: {e}")
+                logger.error("Error cleaning up pubsub for %s: %s", client_id, e)
             finally:
                 del self.pubsub_connections[client_id]
 
-    def disconnect(self, client_id: str):
+    def disconnect(self, client_id: str) -> None:
         if client_id in self.active_connections:
             del self.active_connections[client_id]
             asyncio.create_task(self._cleanup_pubsub(client_id))
 
-    async def send_message(self, message: str, target_client_id: str):
+    async def send_message(self, message: str, target_client_id: str) -> None:
         # Publishes a message to the specified client's Redis channel
         await self.redis_client.publish(target_client_id, message)
 
-    async def listen_to_redis(self, client_id: str):
+    async def listen_to_redis(self, client_id: str) -> None:
         # Starts listening to Redis messages for a specific client
         try:
             pubsub = self.pubsub_connections.get(client_id)
             if not pubsub:
-                logger.error(f"No pubsub connection found for {client_id}")
+                logger.error("No pubsub connection found for %s", client_id)
                 return
 
             async for message in pubsub.listen():
@@ -81,9 +81,9 @@ class ConnectionManager:
                         break
 
         except asyncio.CancelledError:
-            logger.info(f"Redis listener cancelled for {client_id}")
+            logger.info("Redis listener cancelled for %s", client_id)
         except Exception as e:
-            logger.error(f"Redis listener error for {client_id}: {e}")
+            logger.error("Redis listener error for %s: %s", client_id, e)
 
 
 manager = ConnectionManager()

@@ -12,9 +12,9 @@ services:
       - "80:80"     
       - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
-  llm-server:
+  websocket-server:
     build: ./server
     restart: unless-stopped
     expose:
@@ -22,21 +22,24 @@ services:
     volumes:
       - ./server:/src
     env_file:
-      - ./server/.env
+      - ./.env
     depends_on:
       - redis
     command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
     
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.llm.rule=Host(`localhost`)" 
-      - "traefik.http.routers.llm.entrypoints=web"
-      - "traefik.http.services.llm.loadbalancer.server.port=8000"
+      - "traefik.http.routers.websocket-server.rule=Host(`localhost`)" 
+      - "traefik.http.routers.websocket-server.entrypoints=web"
+      - "traefik.http.services.websocket-server.loadbalancer.server.port=8000"
+      # Rate Limiting Middleware
+      - "traefik.http.routers.websocket-server.middlewares=ratelimit"
+      - "traefik.http.middlewares.ratelimit.ratelimit.average=20"
+      - "traefik.http.middlewares.ratelimit.ratelimit.burst=10"
+      - "traefik.http.middlewares.ratelimit.ratelimit.period=1s"
 
   redis:
     image: redis:alpine3.22
     container_name: redis_broker
     restart: unless-stopped
-    ports:
-      - "6379:6379"
-    command: redis-server --save "" --loglevel warning
+    command: redis-server --save "" --loglevel warning --requirepass "${REDIS_PASSWORD}"

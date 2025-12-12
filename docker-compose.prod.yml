@@ -3,6 +3,8 @@ services:
     image: traefik:v3.6.2
     container_name: traefik_proxy
     restart: unless-stopped
+    networks:
+      - proxy_net
     command:
       - "--api.insecure=false"
       - "--providers.docker=true"
@@ -15,35 +17,51 @@ services:
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       # (Resolver) Settings - Let's Encrypt
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=mefenewton@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80" # Default HTTP port
       - "443:443" # Default HTTPS port
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./letsencrypt:/letsencrypt # Certificates folder
 
-  llm-server:
+  websocket-server:
     build: ./server
     restart: unless-stopped
+    networks:
+      - proxy_net
+      - internal_net
     expose:
-      - "8000"
+      - "${WEB_SOCKET_PORT}"
     env_file:
-      - ./server/.env
+      - ./.env
     depends_on:
       - redis
-    command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers" ]
+    command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${WEB_SOCKET_PORT}" ]
     
     labels:
+      # Traefik Routing
       - "traefik.enable=true"
-      - "traefik.http.routers.llm.rule=Host(`bm201proje.duckdns.org`)"
-      - "traefik.http.routers.llm.entrypoints=websecure"
-      - "traefik.http.routers.llm.tls.certresolver=myresolver"
-      - "traefik.http.services.llm.loadbalancer.server.port=8000"
+      - "traefik.http.routers.websocket-server.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.websocket-server.entrypoints=websecure"
+      - "traefik.http.routers.websocket-server.tls.certresolver=myresolver"
+      - "traefik.http.services.websocket-server.loadbalancer.server.port=${WEB_SOCKET_PORT}"
+      # Rate Limiting Middleware
+      - "traefik.http.routers.websocket-server.middlewares=ratelimit"
+      - "traefik.http.middlewares.ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.ratelimit.ratelimit.burst=5"
+      - "traefik.http.middlewares.ratelimit.ratelimit.period=1s"
 
   redis:
-    image: redis:alpine
+    image: redis:alpine3.22
     container_name: redis_broker
     restart: unless-stopped
-    command: redis-server --save "" --loglevel warning
+    networks:
+      - internal_net
+    command: redis-server --save "" --loglevel warning --requirepass "${REDIS_PASSWORD}"
+
+networks:
+  proxy_net:
+  internal_net:
+    internal: true

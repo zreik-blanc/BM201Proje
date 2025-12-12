@@ -1,19 +1,36 @@
-FROM python:3.12-slim
+# Build stage
+FROM python:3.12-alpine AS builder
 
-# Create a non-root user with an explicit UID
-RUN addgroup --system appgroup && adduser --system --group appuser
-
-WORKDIR /src
+WORKDIR /build
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Production stage
+FROM python:3.12-alpine AS production
 
-RUN chown -R appuser:appgroup /src
+# Create a non-root user with an explicit UID
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S -G appgroup appuser
+
+WORKDIR /src
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Copy application code
+COPY --chown=appuser:appgroup ./app ./app
 
 # Switch to the non-root user
 USER appuser

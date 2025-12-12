@@ -1,7 +1,8 @@
 import json
+from typing import Annotated
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Header, status
-from ..config import logger, CONTROLLER_ID
+from ..config import logger, CONTROLLER_ID, CLIENT_ID_PATTERN
 from ..connection_manager import manager
 from ..dependencies import validate_auth
 
@@ -12,21 +13,27 @@ router = APIRouter()
 async def websocket_endpoint(
     websocket: WebSocket,
     client_id: str,
-    x_auth_token: str | None = Header(default=None),
+    x_auth_token: Annotated[str | None, Header()] = None,
 ):
+    # 0. Client ID Validation
+    if not CLIENT_ID_PATTERN.match(client_id):
+        logger.warning("Invalid client_id format: %s", client_id[:50])
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     # 1. Authentication
     if not await validate_auth(websocket, client_id, x_auth_token):
         return
 
     # 2. Duplicate Connection Check
     if client_id in manager.active_connections:
-        logger.warning(f"Client ID '{client_id}' is already connected.")
+        logger.warning("Client ID '%s' is already connected.", client_id)
         await websocket.close(code=status.WS_1000_NORMAL_CLOSURE)
         return
 
     # 3. Connection Accepted
     await manager.connect(websocket, client_id)
-    logger.info(f"Client connected: {client_id}")
+    logger.info("Client connected: %s", client_id)
 
     try:
         while True:
@@ -40,7 +47,9 @@ async def websocket_endpoint(
                     command = message_data.get("message")
 
                     if target and command:
-                        logger.debug(f"LLM -> Redis Pub/Sub -> ({target}): {command}")
+                        logger.debug(
+                            "LLM -> Redis Pub/Sub -> (%s): %s", target, command
+                        )
                         await manager.send_message(command, target)
                     else:
                         await manager.send_message(
@@ -52,11 +61,11 @@ async def websocket_endpoint(
             # --- Logic for Clients (Unity/Devices) ---
             else:
                 logger.debug(
-                    f"{client_id} -> Redis Pub/Sub -> ({CONTROLLER_ID}): {data}"
+                    "%s -> Redis Pub/Sub -> (%s): %s", client_id, CONTROLLER_ID, data
                 )
                 response = json.dumps({"sender": client_id, "message": data})
                 await manager.send_message(response, CONTROLLER_ID)
 
     except WebSocketDisconnect:
         manager.disconnect(client_id)
-        logger.info(f"Client disconnected: {client_id}")
+        logger.info("Client disconnected: %s", client_id)
