@@ -1,8 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Response
 import logging
 
-from server.app.helpers import transcribe_audio_file, analyze_intent, generate_speech
-from server.app.connection_manager import manager
+from ..helpers import transcribe_audio_file, analyze_intent, generate_speech
+from ..connection_manager import manager
 
 router = APIRouter()
 logger = logging.getLogger("app")
