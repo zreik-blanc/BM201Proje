@@ -4,10 +4,10 @@ import requests
 
 from fastapi import HTTPException, UploadFile
 
-from server.app import app_context
+from . import app_context
 import json
 import ollama
-from server.app.config import OLLAMA_MODEL, OLLAMA_HOST, FISH_SPEECH_API_URL
+from .config import OLLAMA_MODEL, OLLAMA_HOST, FISH_SPEECH_API_URL
 
 
 async def transcribe_audio_file(file: UploadFile) -> str:
