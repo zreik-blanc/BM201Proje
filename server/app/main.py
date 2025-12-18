@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from faster_whisper import WhisperModel
+from TTS.api import TTS
 
 from . import app_context
-from .config import check_keys, WHISPER_MODEL_SIZE, DEVICE
+from .config import check_keys, WHISPER_MODEL_SIZE, DEVICE, TTS_MODEL_NAME
 from .routers import system, websocket, assistant
 
 # Initializing the AI models
@@ -19,6 +20,15 @@ try:
     )
 except Exception as e:
     print(f"Faster-Whisper failed to load: {e}")
+    exit(1)
+
+# Loading XTTS v2 TTS Model
+print(f"--- Global Load: Loading XTTS v2 ({TTS_MODEL_NAME}) onto {DEVICE}...")
+try:
+    app_context.TTS_MODEL = TTS(model_name=TTS_MODEL_NAME).to(DEVICE)
+    print(f"--- Global Load: XTTS v2 loaded successfully on {DEVICE}.")
+except Exception as e:
+    print(f"XTTS v2 failed to load: {e}")
     exit(1)
 
 
