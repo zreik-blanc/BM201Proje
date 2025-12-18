@@ -1,8 +1,8 @@
 import asyncio
 from faster_whisper import WhisperModel
-from typing import Optional
+from typing import Optional, Any
 
-TTS_MODEL: None
+TTS_MODEL: Optional[Any] = None
 
 WHISPER_MODEL: Optional[WhisperModel] = None
 

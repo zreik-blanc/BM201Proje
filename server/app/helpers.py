@@ -1,13 +1,15 @@
 import os
 import tempfile
-import requests
+import io
+import numpy as np
+import scipy.io.wavfile as wav
 
 from fastapi import HTTPException, UploadFile
 
 from . import app_context
 import json
 import ollama
-from .config import OLLAMA_MODEL, OLLAMA_HOST, FISH_SPEECH_API_URL
+from .config import OLLAMA_MODEL, OLLAMA_HOST, TTS_LANGUAGE, TTS_SPEAKER_WAV
 
 
 async def transcribe_audio_file(file: UploadFile) -> str:
@@ -128,20 +130,38 @@ def analyze_intent(text: str) -> dict:
 
 def generate_speech(text: str) -> bytes:
     """
-    Generates speech from text using the Fish Speech from the Docker container.
+    Generates speech from text using the local XTTS v2 model.
     """
+    if not app_context.TTS_MODEL:
+        print("Error: TTS model is not initialized.")
+        return b""
+
     try:
+        print(f"Generating speech for: '{text}' using XTTS v2")
 
-        payload = {"text": text, "format": "wav", "reference_id": "voice"}
+        # Generate audio using XTTS v2
+        wav_data = app_context.TTS_MODEL.tts(
+            text=text,
+            language=TTS_LANGUAGE,
+            speaker_wav=TTS_SPEAKER_WAV,
+        )
 
-        print(f"Generating speech for: '{text}' at {FISH_SPEECH_API_URL}")
-        response = requests.post(FISH_SPEECH_API_URL, json=payload, timeout=10)
+        # Convert to WAV bytes
+        buffer = io.BytesIO()
+        # XTTS v2 uses 24kHz sample rate
+        sample_rate = 24000
+        # Convert to int16 for WAV format
+        wav_array = np.array(wav_data)
+        wav_int16 = (wav_array * 32767).astype(np.int16)
+        wav.write(buffer, sample_rate, wav_int16)
+        buffer.seek(0)
 
-        if response.status_code == 200:
-            return response.content
-        else:
-            print(f"Fish Speech API Error: {response.status_code} - {response.text}")
-            return b""
+        print(f"Speech generated successfully, size: {buffer.getbuffer().nbytes} bytes")
+        return buffer.read()
+
     except Exception as e:
         print(f"TTS Error: {e}")
+        import traceback
+
+        traceback.print_exc()
         return b""
