@@ -148,9 +148,7 @@ def generate_speech(text: str) -> bytes:
 
         # Convert to WAV bytes
         buffer = io.BytesIO()
-        # XTTS v2 uses 24kHz sample rate
         sample_rate = 24000
-        # Convert to int16 for WAV format
         wav_array = np.array(wav_data)
         wav_int16 = (wav_array * 32767).astype(np.int16)
         wav.write(buffer, sample_rate, wav_int16)
