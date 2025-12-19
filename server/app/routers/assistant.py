@@ -49,7 +49,7 @@ async def handle_voice_message(file: UploadFile = File(...)):
         else:
             logger.info(f"No direct device command found for: {command}")
 
-        # 4. Generate Audio Reply
+        # Generating Audio Reply
         reply_text = intent.get("reply")
         audio_content = None
         if reply_text:
@@ -59,11 +59,6 @@ async def handle_voice_message(file: UploadFile = File(...)):
         if audio_content:
             return Response(content=audio_content, media_type="audio/wav")
         else:
-            # Fallback if TTS fails (or no reply), though user asked for audio only.
-            # Returning 500 might be appropriate if audio is strictly required,
-            # but let's return JSON with error or just the JSON as fallback.
-            # User said "post'ta return olarak sadece ses dosyası olacak".
-            # If we fail, maybe 500 is safer to signal Unity something went wrong.
             logger.error("Failed to generate audio content")
             raise HTTPException(500, "Failed to generate audio response")
 
